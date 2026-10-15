@@ -1,0 +1,18 @@
+{
+  "rules": [
+    {"name":"openssh","protocol":"SSH","product":"OpenSSH","regex":"^SSH-[12]\\.[0-9]+-OpenSSH[_-]([0-9][A-Za-z0-9.p]*)(?:[ \\r\\n]|$)","version_group":1,"priority":100},
+    {"name":"nginx","protocol":"HTTP","product":"nginx","regex":"(?im)^Server:\\s*nginx(?:/([0-9]+(?:\\.[0-9]+)*))?(?:[ \\r\\n]|$)","version_group":1,"priority":100},
+    {"name":"apache","protocol":"HTTP","product":"Apache httpd","regex":"(?im)^Server:\\s*Apache(?:/([0-9]+(?:\\.[0-9]+)*))?(?:[ \\r\\n(]|$)","version_group":1,"priority":100},
+    {"name":"jetty","protocol":"HTTP","product":"Jetty","regex":"(?im)^Server:[ \\t]*Jetty(?:[/(]([0-9][A-Za-z0-9._-]*))?(?:[) \\r\\n]|$)","version_group":1,"priority":100},
+    {"name":"iis","protocol":"HTTP","product":"Microsoft IIS","regex":"(?im)^Server:[ \\t]*Microsoft-IIS(?:/([0-9.]+))?(?:[ \\r\\n]|$)","version_group":1,"priority":100},
+    {"name":"redis-info","protocol":"Redis","product":"Redis","regex":"(?m)^redis_version:([0-9]+(?:\\.[0-9]+)*(?:[-A-Za-z0-9.]*)?)\\r?$","version_group":1,"priority":100},
+    {"name":"redis-denied","protocol":"Redis","product":"Redis","regex":"^-DENIED Redis is running in protected mode","priority":90},
+    {"name":"proftpd","protocol":"FTP","product":"ProFTPD","regex":"(?im)^220[- ].*ProFTPD(?:[ \\t]+([0-9][A-Za-z0-9.]*))?","version_group":1,"priority":100},
+    {"name":"vsftpd","protocol":"FTP","product":"vsftpd","regex":"(?im)^220[- ].*vsFTPd(?:[ \\t]+([0-9.]+))?","version_group":1,"priority":100},
+    {"name":"mysql-text","protocol":"MySQL","product":"MySQL","regex":"(?i)^MySQL[ /]([0-9]+\\.[0-9]+\\.[0-9]+[A-Za-z0-9._-]*)","version_group":1,"priority":80},
+    {"name":"ssh","protocol":"SSH","regex":"(?m)^SSH-[12]\\.[0-9]+-","priority":10},
+    {"name":"http","protocol":"HTTP","regex":"^HTTP/[0-9]+(?:\\.[0-9]+)?[ \\t]+[0-9]{3}(?:[ \\r\\n]|$)","priority":10},
+    {"name":"ftp","protocol":"FTP","regex":"(?i)^220[- ][^\\r\\n]*\\bFTP\\b","priority":10},
+    {"name":"redis-auth","protocol":"Redis","regex":"^-NOAUTH Authentication required\\.?\\r?\\n?$","priority":10}
+  ]
+}
