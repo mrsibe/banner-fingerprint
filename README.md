@@ -30,6 +30,19 @@ Compose 启动 server，健康检查通过后 client 执行七条示例并输出
 docker compose up --build --abort-on-container-exit --exit-code-from client
 ```
 
+## 架构
+
+```text
+Go CLI（读取 JSON 文件）
+  → POST /api/v1/identify（批量 Banner）
+  → HTTP Handler（参数与大小校验）
+  → Fingerprint Engine（内嵌规则 / 正则捕获 / MySQL 二进制解析）
+  → JSON 数组（协议、产品、版本、OS 提示、置信度）
+  → Go CLI（终端输出）
+```
+
+Compose 通过 `/healthz` 确认 server 就绪后运行 client。不连接输入中的目标 IP，不依赖数据库或其他中间件。
+
 ## 支持范围与示例
 
 | Banner 特征 | 协议 | 产品 | 示例版本 |
@@ -44,6 +57,28 @@ docker compose up --build --abort-on-container-exit --exit-code-from client
 | Server: Microsoft-IIS | HTTP | Microsoft IIS | 10.0 |
 
 `examples/input.json` 提供七条代表性输入，不宣称是未提供的原题原始样本。额外覆盖协议兜底、产品无版本、无匹配、冲突端口与规则优先级。
+
+### 七条演示结果
+
+以下结果来自实际 Client → Server 调用，完整 JSON 见 [`examples/output.json`](examples/output.json)。空 OS 表示 Banner 未提供相应线索，不根据产品推断。
+
+| IP | 端口 | 协议 | 产品 | 版本 | OS 提示 | 置信度 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 192.0.2.1 | 22 | SSH | OpenSSH | 8.9p1 | Ubuntu | 0.95 |
+| 192.0.2.2 | 80 | HTTP | nginx | 1.24.0 | — | 0.95 |
+| 192.0.2.3 | 80 | HTTP | Apache httpd | 2.4.57 | Debian | 0.95 |
+| 192.0.2.4 | 3306 | MySQL | MySQL | 8.0.36 | — | 0.95 |
+| 192.0.2.5 | 6379 | Redis | Redis | 7.2.4 | — | 0.95 |
+| 192.0.2.6 | 21 | FTP | ProFTPD | 1.3.8 | — | 0.95 |
+| 192.0.2.7 | 8080 | HTTP | Jetty | 9.4.54.v20240208 | — | 0.95 |
+
+服务端启动后可复现并自动断言：
+
+```bash
+go run ./cmd/client -input examples/input.json > /tmp/banner-results.json
+python3 scripts/check-results.py /tmp/banner-results.json
+# All seven demo results verified.
+```
 
 ## API
 
@@ -88,7 +123,19 @@ go build ./...
 go test ./internal/fingerprint -run '^$' -fuzz FuzzIdentify -fuzztime 10s
 ```
 
-GitHub Actions 在 push / pull request 时执行最低 Go 版本和最新稳定版的测试、race 检查、构建、CLI 端到端断言及 Docker Compose 集成测试。需要先自行建立 GitHub 远程仓库并推送，工作流才会运行。
+GitHub Actions 在 push / pull request 时执行最低 Go 版本和最新稳定版的测试、race 检查、构建、CLI 端到端断言及 Docker Compose 集成测试。运行结果见 [Actions](https://github.com/mrsibe/banner-fingerprint/actions)。
+
+### MVP 验收清单
+
+| 优先级 | 检查项 | 验证方式 |
+| --- | --- | --- |
+| P0 | Docker Compose 一键启动 | CI `docker` job：构建、健康检查、client 成功退出 |
+| P0 | Client → Server → JSON 全链路 | CI 两个 Go 版本均运行真实可执行程序并断言输出 |
+| P0 | 7 个示例全部正确 | `scripts/check-results.py` 检查全部识别字段、IP/端口和置信度 |
+| P1 | 异常输入、未知 Banner | API/引擎测试覆盖无效 JSON、IP/端口、Base64、超限、整批拒绝及空识别结果 |
+| P1 | README 启动、架构、演示 | 本文快速开始、架构和七条演示结果 |
+
+首次完整 CI [已通过](https://github.com/mrsibe/banner-fingerprint/actions/runs/38697396644)，包括 Compose；本地环境无可用 Docker，容器验证以 CI 为准。
 
 ## 项目结构
 

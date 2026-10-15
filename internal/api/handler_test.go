@@ -32,6 +32,7 @@ func TestIdentifyHTTP(t *testing.T) {
 		{"bad IP", "POST", "/api/v1/identify", `[{"ip":"localhost","port":22,"banner":"x"}]`, 400},
 		{"bad port", "POST", "/api/v1/identify", `[{"ip":"::1","port":0,"banner":"x"}]`, 400},
 		{"missing banner", "POST", "/api/v1/identify", `[{"ip":"::1","port":22}]`, 400},
+		{"invalid second item", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner":"SSH-2.0-OpenSSH_8.9p1"},{"ip":"::1","port":65536,"banner":"unknown"}]`, 400},
 		{"both banners", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner":"x","banner_base64":"eA=="}]`, 400},
 		{"bad base64", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner_base64":"???"}]`, 400},
 		{"oversized banner", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner":"` + strings.Repeat("x", MaxBannerBytes+1) + `"}]`, 400},
@@ -45,12 +46,26 @@ func TestIdentifyHTTP(t *testing.T) {
 			if w.Code != tt.status {
 				t.Fatalf("got %d: %s", w.Code, w.Body.String())
 			}
+			if tt.status == 400 || tt.status == 413 {
+				var response struct {
+					Error string `json:"error"`
+				}
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil || response.Error == "" {
+					t.Fatalf("expected JSON error, got %s", w.Body.String())
+				}
+				if tt.name == "invalid second item" && !strings.Contains(response.Error, "item 1:") {
+					t.Fatalf("expected whole-batch rejection at item 1: %s", response.Error)
+				}
+			}
 			if tt.name == "batch" {
 				var results []fingerprint.IdentifyResult
 				if err := json.Unmarshal(w.Body.Bytes(), &results); err != nil {
 					t.Fatal(err)
 				}
-				if len(results) != 2 || results[0].Product != "OpenSSH" || results[0].Port != 80 || results[1].Confidence != 0 {
+				if len(results) != 2 || results[0].Product != "OpenSSH" || results[0].Port != 80 {
+					t.Fatalf("unexpected results: %+v", results)
+				}
+				if results[1] != (fingerprint.IdentifyResult{IP: "::1", Port: 22}) {
 					t.Fatalf("unexpected results: %+v", results)
 				}
 			}
