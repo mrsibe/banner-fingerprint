@@ -43,6 +43,14 @@ Go CLI（读取 JSON 文件）
 
 Compose 通过 `/healthz` 确认 server 就绪后运行 client。不连接输入中的目标 IP，不依赖数据库或其他中间件。
 
+## 版本下载与 CD
+
+[GitHub Releases](https://github.com/mrsibe/banner-fingerprint/releases) 提供 Linux、macOS、Windows 的 amd64 / arm64 压缩包，每包包含 `banner-server`、`banner-client`（Windows 为 `.exe`）、示例和文档；`SHA256SUMS` 用于校验下载完整性。
+
+解压后在包目录运行 `./banner-server`，另一终端运行 `./banner-client -input examples/input.json`。Windows 使用 `banner-server.exe` 和 `banner-client.exe`。仓库当前为私有，下载需要仓库访问权限。
+
+CD 由 `vMAJOR.MINOR.PATCH` 标签触发，**完整 CI（含 Compose 和七条断言）通过后才发布 Release**，不会自动部署服务器。详见 [发布流程](docs/releases.md)。
+
 ## 支持范围与示例
 
 | Banner 特征 | 协议 | 产品 | 示例版本 |
