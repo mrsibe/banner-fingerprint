@@ -1,5 +1,18 @@
 # 版本发布与 CD
 
+## v0.1.1
+
+- 新增题目指定的 `POST /fingerprint`、`GET /health`，保留旧路径别名。
+- 未识别结果统一为 `protocol: "unknown"`；空/缺失 Banner 返回 unknown，合法未知数据不导致请求失败。
+- Client 和容器健康检查切换为指定接口。
+- Compose 使用专用 internal 网络，仅向宿主机回环地址暴露服务端口。
+- 增加真实 HTTP 契约、别名一致性、unknown、错误后健康检查与网络隔离断言。
+- 收录全部 20 条题目样本及独立预期；新增 Redis PONG/错误、Pure-FTPd、MySQL 截断握手支持，并同时验证文本和 Base64 传输。
+- Apache 产品名统一为题目使用的 `Apache`（原为 `Apache httpd`）。
+- 仓库公开，补齐与接口行为一致的文档。
+
+兼容性注意：未知结果的 protocol 从空字符串变为 unknown，调用者需相应调整。该版本不宣称能追溯满足原题的截止时间或会议录屏要求。
+
 ## 首版 v0.1.0
 
 轻量级被动 Banner 指纹识别 MVP：
@@ -22,7 +35,7 @@
   publish：下载产物 → 验证校验和 → 创建 draft Release → 公开发布状态
 ```
 
-“公开发布状态”是相对草稿而言，不会改变仓库的私有属性。未通过 CI 不会发布 GitHub Release。只有 publish job 拥有 `contents: write`，其余 job 只读。不发布 Docker 镜像、不访问部署服务器、不使用长期发布令牌。
+“公开发布状态”是相对草稿而言，不会改变仓库本身的可见性。未通过 CI 不会发布 GitHub Release。只有 publish job 拥有 `contents: write`，其余 job 只读。不发布 Docker 镜像、不访问部署服务器、不使用长期发布令牌。
 
 ## 产物
 

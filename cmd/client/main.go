@@ -43,7 +43,7 @@ func run() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(*server, "/")+"/api/v1/identify", bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(*server, "/")+"/fingerprint", bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

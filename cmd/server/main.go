@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 	if *health {
 		client := &http.Client{Timeout: 2 * time.Second}
-		resp, err := client.Get("http://127.0.0.1:8080/healthz")
+		resp, err := client.Get("http://127.0.0.1:8080/health")
 		if err != nil {
 			log.Fatal(err)
 		}

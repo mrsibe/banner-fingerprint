@@ -1,6 +1,8 @@
 # HTTP API 契约
 
-## POST /api/v1/identify
+## POST /fingerprint
+
+兼容别名：`POST /api/v1/identify`，使用完全相同的处理逻辑。
 
 请求体是非空 JSON 数组。推荐 `Content-Type: application/json`，服务端按 JSON 解析，不依赖该请求头。字段名大小写建议严格使用下表形式。
 
@@ -8,14 +10,14 @@
 | --- | --- | --- |
 | ip | string | IPv4 或 IPv6 字面量，不接受域名，不对其建立连接 |
 | port | integer | 1–65535，只用于关联 |
-| banner | string | 非空文本，与 banner_base64 二选一 |
+| banner | string | 文本，可为空；不能与非空 banner_base64 同时传入 |
 | banner_base64 | string | 标准 RFC 4648 Base64，解码后非空，与 banner 二选一 |
 
-未选择的 Banner 字段可省略或设为空字符串。未知字段、尾随第二份 JSON、无效 Base64、空数组、null、无效 IP/端口均拒绝。请求最大 4 MiB（含 JSON 编码开销），最多 1000 条；每条 Banner 文本 UTF-8 编码或二进制解码后最多 65536 字节。采用整批校验：任意一项无效，整批返回错误，不返回部分结果。
+Banner 字段可省略或设为空字符串；两者均为空时返回 unknown，而非参数错误。未知字段、尾随第二份 JSON、无效 Base64、空数组、null、无效 IP/端口均拒绝。请求最大 4 MiB（含 JSON 编码开销），最多 1000 条；每条 Banner 文本 UTF-8 编码或二进制解码后最多 65536 字节。采用整批校验：任意一项无效，整批返回错误，不返回部分结果。
 
 ### 二进制 MySQL
 
-`banner_base64` 支持原始 protocol-10 payload 或带 4 字节包头的单个完整握手包。服务端检查协议字节、NUL 终止的版本字符串、连接 ID、8 字节认证种子和其后填充字节；完整包还检查长度和 sequence ID 0。仅做服务识别所需的前缀验证，不验证完整 capability/authentication 结构。
+`banner_base64` 支持原始 protocol-10 payload 或带 4 字节包头的单个完整握手包。可用 UTF-8 表达的二进制（例如题目中的 ASCII/NUL MySQL 前缀）也能直接通过 `banner` 提交。服务端检查协议字节、NUL 终止的版本字符串、连接 ID、8 字节认证种子和其后填充字节；完整包还检查长度和 sequence ID 0。仅做服务识别所需的前缀验证，不验证完整 capability/authentication 结构。另外兼容题目中只包含包头、协议字节、完整 NUL 终止版本的截断包：检查 sequence ID 0、协议 10、声明长度大于已捕获长度和版本格式，返回较低置信度 0.85。截断的任意字节或没有可信包头的版本字符串不会按握手接受。
 
 ```python
 import base64
@@ -36,7 +38,7 @@ print(json.dumps([{
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
 | ip / port | string / integer | 原样回显 |
-| protocol | string | SSH、HTTP、MySQL、Redis、FTP 或空字符串 |
+| protocol | string | SSH、HTTP、MySQL、Redis、FTP 或 unknown |
 | product | string | 产品或空字符串 |
 | version | string | 捕获的版本或空字符串 |
 | os_hint | string | 显式关键词提示或空字符串 |
@@ -45,7 +47,7 @@ print(json.dumps([{
 无匹配也是 200：
 
 ```json
-[{"ip":"192.0.2.1","port":22,"protocol":"","product":"","version":"","os_hint":"","confidence":0}]
+[{"ip":"192.0.2.1","port":22,"protocol":"unknown","product":"","version":"","os_hint":"","confidence":0}]
 ```
 
 ### 错误
@@ -56,9 +58,11 @@ print(json.dumps([{
 
 业务校验错误采用 JSON：`{"error":"item 0: invalid IP or port"}`。索引从 0 开始。响应不包含原始 Banner，日志也不记录请求正文。Go 标准 JSON 解码器接受重复字段（后者覆盖前者），不将本接口用作签名或安全策略判断依据。
 
-## GET /healthz
+## GET /health
 
-返回 200、`{"status":"ok"}`。规则启动时编译失败则进程退出，因此健康服务的规则集已成功载入。`server -healthcheck` 专用于 Docker 默认 8080 端口，带 2 秒超时；自定义 `-addr` 时请直接请求相应地址的 `/healthz`。
+兼容别名：`GET /healthz`。
+
+返回 200、`{"status":"ok"}`。规则启动时编译失败则进程退出，因此健康服务的规则集已成功载入。`server -healthcheck` 专用于 Docker 默认 8080 端口，带 2 秒超时；自定义 `-addr` 时请直接请求相应地址的 `/health`。
 
 ## Client
 

@@ -15,7 +15,7 @@ ENTRYPOINT ["/server"]
 
 FROM scratch AS client
 COPY --from=build /out/client /client
-COPY examples/input.json /examples/input.json
+COPY examples /examples
 USER 65532:65532
 ENTRYPOINT ["/client"]
 CMD ["-input", "/examples/input.json", "-server", "http://server:8080"]

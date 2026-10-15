@@ -9,7 +9,7 @@ with open("examples/input.json", encoding="utf-8") as source:
 expected = [
     ("SSH", "OpenSSH", "8.9p1", "Ubuntu"),
     ("HTTP", "nginx", "1.24.0", ""),
-    ("HTTP", "Apache httpd", "2.4.57", "Debian"),
+    ("HTTP", "Apache", "2.4.57", "Debian"),
     ("MySQL", "MySQL", "8.0.36", ""),
     ("Redis", "Redis", "7.2.4", ""),
     ("FTP", "ProFTPD", "1.3.8", ""),

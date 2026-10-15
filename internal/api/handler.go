@@ -21,10 +21,12 @@ const (
 
 func New(engine *fingerprint.Engine) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	health := func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
-	mux.HandleFunc("POST /api/v1/identify", func(w http.ResponseWriter, r *http.Request) {
+	}
+	mux.HandleFunc("GET /health", health)
+	mux.HandleFunc("GET /healthz", health) // Compatibility with v0.1.0.
+	identify := func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
@@ -71,7 +73,9 @@ func New(engine *fingerprint.Engine) http.Handler {
 			results = append(results, result)
 		}
 		writeJSON(w, http.StatusOK, results)
-	})
+	}
+	mux.HandleFunc("POST /fingerprint", identify)
+	mux.HandleFunc("POST /api/v1/identify", identify) // Compatibility with v0.1.0.
 	return mux
 }
 

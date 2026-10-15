@@ -21,7 +21,7 @@
     "ip": "192.0.2.3",
     "port": 80,
     "protocol": "HTTP",
-    "product": "Apache httpd",
+    "product": "Apache",
     "version": "2.4.57",
     "os_hint": "Debian",
     "confidence": 0.95

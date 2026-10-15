@@ -38,6 +38,9 @@ jobs:
           ./bin/server -healthcheck
           ./bin/client -input examples/input.json > /tmp/banner-results.json
           python3 scripts/check-results.py /tmp/banner-results.json
+          python3 scripts/check-api.py
+          ./bin/client -input examples/task-input.json > /tmp/task-results.json
+          python3 scripts/check-task.py /tmp/task-results.json
   docker:
     runs-on: ubuntu-latest
     steps:
@@ -48,3 +51,10 @@ jobs:
           docker compose up --build --abort-on-container-exit --exit-code-from client
           docker compose logs --no-log-prefix client > /tmp/banner-results.json
           python3 scripts/check-results.py /tmp/banner-results.json
+          # Restart only server to check the published loopback API as well.
+          docker compose up -d --wait server
+          python3 scripts/check-api.py
+          docker compose run --rm --no-deps -T client -input /examples/task-input.json -server http://server:8080 > /tmp/task-results.json
+          python3 scripts/check-task.py /tmp/task-results.json
+          network=$(docker inspect "$(docker compose ps -q server)" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}')
+          test "$(docker network inspect "$network" --format '{{.Internal}}')" = true

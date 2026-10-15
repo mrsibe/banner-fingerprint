@@ -31,7 +31,11 @@ func TestIdentifyHTTP(t *testing.T) {
 		{"unknown field", "POST", "/api/v1/identify", `[{"extra":true}]`, 400},
 		{"bad IP", "POST", "/api/v1/identify", `[{"ip":"localhost","port":22,"banner":"x"}]`, 400},
 		{"bad port", "POST", "/api/v1/identify", `[{"ip":"::1","port":0,"banner":"x"}]`, 400},
-		{"missing banner", "POST", "/api/v1/identify", `[{"ip":"::1","port":22}]`, 400},
+		{"missing banner", "POST", "/api/v1/identify", `[{"ip":"::1","port":22}]`, 200},
+		{"empty banner", "POST", "/fingerprint", `[{"ip":"::1","port":22,"banner":""}]`, 200},
+		{"canonical batch", "POST", "/fingerprint", `[{"ip":"::1","port":22,"banner":"unknown"}]`, 200},
+		{"canonical health", "GET", "/health", "", 200},
+		{"canonical method", "GET", "/fingerprint", "", 405},
 		{"invalid second item", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner":"SSH-2.0-OpenSSH_8.9p1"},{"ip":"::1","port":65536,"banner":"unknown"}]`, 400},
 		{"both banners", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner":"x","banner_base64":"eA=="}]`, 400},
 		{"bad base64", "POST", "/api/v1/identify", `[{"ip":"::1","port":22,"banner_base64":"???"}]`, 400},
@@ -57,6 +61,15 @@ func TestIdentifyHTTP(t *testing.T) {
 					t.Fatalf("expected whole-batch rejection at item 1: %s", response.Error)
 				}
 			}
+			if tt.name == "missing banner" || tt.name == "empty banner" || tt.name == "canonical batch" {
+				var results []fingerprint.IdentifyResult
+				if err := json.Unmarshal(w.Body.Bytes(), &results); err != nil {
+					t.Fatal(err)
+				}
+				if len(results) != 1 || results[0] != (fingerprint.IdentifyResult{IP: "::1", Port: 22, Protocol: "unknown"}) {
+					t.Fatalf("expected unknown result: %+v", results)
+				}
+			}
 			if tt.name == "batch" {
 				var results []fingerprint.IdentifyResult
 				if err := json.Unmarshal(w.Body.Bytes(), &results); err != nil {
@@ -65,7 +78,7 @@ func TestIdentifyHTTP(t *testing.T) {
 				if len(results) != 2 || results[0].Product != "OpenSSH" || results[0].Port != 80 {
 					t.Fatalf("unexpected results: %+v", results)
 				}
-				if results[1] != (fingerprint.IdentifyResult{IP: "::1", Port: 22}) {
+				if results[1] != (fingerprint.IdentifyResult{IP: "::1", Port: 22, Protocol: "unknown"}) {
 					t.Fatalf("unexpected results: %+v", results)
 				}
 			}

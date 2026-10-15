@@ -12,7 +12,7 @@ import (
 	"github.com/mrsibe/banner-fingerprint/rules"
 )
 
-// ScanInput describes one already collected banner. Exactly one banner field is required.
+// ScanInput describes one already collected banner. Empty banners are unknown.
 type ScanInput struct {
 	IP           string `json:"ip"`
 	Port         int    `json:"port"`
@@ -20,7 +20,7 @@ type ScanInput struct {
 	BannerBase64 string `json:"banner_base64,omitempty"`
 }
 
-// IdentifyResult preserves input identity; empty fields and confidence zero mean unknown.
+// IdentifyResult preserves input identity; protocol unknown and confidence zero mean no match.
 type IdentifyResult struct {
 	IP         string  `json:"ip"`
 	Port       int     `json:"port"`
@@ -76,11 +76,11 @@ func load(data []byte) (*Engine, error) {
 }
 
 // Identify uses only banner contents, never the port, as identification evidence.
-// Binary MySQL input accepts a protocol-10 payload or a complete handshake packet.
+// MySQL input accepts protocol-10 payloads, packets, or version-only packet prefixes.
 func (e *Engine) Identify(in ScanInput) (IdentifyResult, error) {
-	out := IdentifyResult{IP: in.IP, Port: in.Port}
-	if (in.Banner == "") == (in.BannerBase64 == "") {
-		return out, fmt.Errorf("exactly one of banner and banner_base64 is required")
+	out := IdentifyResult{IP: in.IP, Port: in.Port, Protocol: "unknown"}
+	if in.Banner != "" && in.BannerBase64 != "" {
+		return out, fmt.Errorf("banner and banner_base64 must not both be nonempty")
 	}
 	data := []byte(in.Banner)
 	if in.BannerBase64 != "" {
@@ -89,17 +89,21 @@ func (e *Engine) Identify(in ScanInput) (IdentifyResult, error) {
 		if err != nil || len(data) == 0 {
 			return out, fmt.Errorf("banner_base64 must encode nonempty bytes")
 		}
-		if version, ok := mysqlVersion(data); ok {
-			out.Protocol = "MySQL"
-			out.Product = "MySQL"
-			out.Version = version
-			out.Confidence = .95
-			if strings.Contains(strings.ToLower(version), "mariadb") {
-				out.Product = "MariaDB"
-			}
-			out.OSHint = osHint(version)
-			return out, nil
+	}
+	version, ok := mysqlVersion(data)
+	confidence := .95
+	if !ok {
+		version, ok = mysqlPacketPrefix(data)
+		confidence = .85 // A truncated capture provides less evidence than a full prefix.
+	}
+	if ok {
+		out.Protocol, out.Product, out.Version = "MySQL", "MySQL", version
+		out.Confidence = confidence
+		if strings.Contains(strings.ToLower(version), "mariadb") {
+			out.Product = "MariaDB"
 		}
+		out.OSHint = osHint(version)
+		return out, nil
 	}
 	text := string(data)
 	isHTTP := strings.HasPrefix(text, "HTTP/")
@@ -145,7 +149,7 @@ func (e *Engine) Identify(in ScanInput) (IdentifyResult, error) {
 			}
 		}
 	}
-	if out.Protocol != "" {
+	if out.Protocol != "unknown" {
 		out.OSHint = osHint(text)
 	}
 	return out, nil
@@ -173,6 +177,23 @@ func mysqlVersion(data []byte) (string, bool) {
 	// Require connection ID, auth seed and the following filler byte, not just a prefix.
 	tail := data[2+end:]
 	if len(tail) < 13 || tail[12] != 0 || !mysqlVersionPattern.MatchString(version) {
+		return "", false
+	}
+	return version, true
+}
+
+// mysqlPacketPrefix accepts only a packet header followed by a complete NUL-terminated
+// version, as in the task's shortened captures. It never infers a version from port.
+func mysqlPacketPrefix(data []byte) (string, bool) {
+	if len(data) < 7 || data[3] != 0 || data[4] != 10 {
+		return "", false
+	}
+	declared := int(data[0]) | int(data[1])<<8 | int(data[2])<<16
+	if declared <= len(data)-4 || declared < 19 || data[len(data)-1] != 0 {
+		return "", false
+	}
+	version := string(data[5 : len(data)-1])
+	if len(version) > 255 || !mysqlVersionPattern.MatchString(version) {
 		return "", false
 	}
 	return version, true
