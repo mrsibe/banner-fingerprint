@@ -1,0 +1,48 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', 'stable']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Check formatting
+        run: test -z "$(gofmt -l cmd internal rules)"
+      - run: go vet ./...
+      - run: go test -race -coverprofile=coverage.out ./...
+      - name: Build and exercise real client/server
+        shell: bash
+        run: |
+          mkdir -p bin
+          go build -o bin/server ./cmd/server
+          go build -o bin/client ./cmd/client
+          ./bin/server > /tmp/banner-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if ./bin/server -healthcheck; then break; fi
+            sleep 1
+          done
+          ./bin/server -healthcheck
+          ./bin/client -input examples/input.json > /tmp/banner-results.json
+          python3 scripts/check-results.py /tmp/banner-results.json
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose end-to-end demo
+        run: |
+          trap 'docker compose logs; docker compose down' EXIT
+          docker compose up --build --abort-on-container-exit --exit-code-from client
+          docker compose logs --no-log-prefix client > /tmp/banner-results.json
+          python3 scripts/check-results.py /tmp/banner-results.json

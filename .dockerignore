@@ -1,0 +1,6 @@
+.git
+.github
+.pi
+bin
+coverage.out
+*.log
