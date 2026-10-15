@@ -41,7 +41,7 @@ Go CLI（读取 JSON 文件）
   → Go CLI（终端输出）
 ```
 
-Compose 通过 `/health` 确认 server 就绪后运行 client。两个容器仅加入专用 `internal` 网络，通过服务名 `server:8080` 访问，不使用容器 IP，也不从容器绕行宿主机端口。Server 仅向宿主机回环地址发布 8080；该网络不提供容器对外访问。不连接输入中的目标 IP，不依赖数据库或其他中间件。
+Compose 通过 `/health` 确认 server 就绪后运行 client。Client 仅加入专用 `internal` 网络，通过服务名 `server:8080` 访问，不使用容器 IP，也不绕行宿主机端口。Server 同时连接入口桥接网络与内部网络，仅向宿主机回环地址发布 8080。Client 没有外网路由；Server 的入口网络用于宿主机访问，不宣称 Server 无出站能力。不连接输入中的目标 IP，不依赖数据库或其他中间件。
 
 ## 版本下载与 CD
 

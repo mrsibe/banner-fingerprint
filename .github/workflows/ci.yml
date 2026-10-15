@@ -56,5 +56,5 @@ jobs:
           python3 scripts/check-api.py
           docker compose run --rm --no-deps -T client -input /examples/task-input.json -server http://server:8080 > /tmp/task-results.json
           python3 scripts/check-task.py /tmp/task-results.json
-          network=$(docker inspect "$(docker compose ps -q server)" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}')
+          network=$(docker inspect "$(docker compose ps -aq client)" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}')
           test "$(docker network inspect "$network" --format '{{.Internal}}')" = true

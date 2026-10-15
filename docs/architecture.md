@@ -43,6 +43,6 @@ JSON 文件 → Go CLI → POST /fingerprint
 
 规则适用于有限产品的常见 Banner，并非完整 Nmap 探测库。HTTP 不做完整语法解析，MySQL 也不是完整协议实现。输入伪造无法被被动识别解决。后续新增产品应优先增加精确规则和反例，而不是引入庞大基础设施。
 
-部署采用两个无 shell、非 root 的 scratch 镜像，Compose 以进程自身的 `/health` 健康检查实现启动顺序。两个容器仅连接专用 internal 网络，不提供对外路由；client 通过服务名 `server:8080` 请求，不经宿主机端口。Server 发布端口仅绑定宿主机回环地址。client 是一次性任务；无需写盘或容器 capabilities。
+部署采用两个无 shell、非 root 的 scratch 镜像，Compose 以进程自身的 `/health` 健康检查实现启动顺序。client 仅连接专用 internal 网络，无外网路由，通过服务名 `server:8080` 请求，不经宿主机端口。Server 连接独立 ingress 桥接网络与 internal 网络；只有 Server 发布端口，且仅绑定宿主机回环地址。入口网络用于兼容 Docker 对发布端口的转发需求，不宣称 Server 无出站能力。client 是一次性任务；无需写盘或容器 capabilities。
 
 未匹配（包括空或缺失 Banner）统一产生 `protocol: "unknown"`、confidence 0，不属于请求失败；格式、IP/端口或编码不合法仍返回 400。旧版接口路径保留为别名，但 unknown 返回值从 v0.1.1 起按题目要求调整。

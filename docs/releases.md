@@ -1,11 +1,17 @@
 # 版本发布与 CD
 
-## v0.1.1
+## v0.1.2
+
+修复 v0.1.1 的 Compose 网络验收失败：Server 使用 ingress + internal 双网络，以支持宿主机回环端口访问；Client 仍只加入 internal 网络。保留全部接口、unknown 和 20 条回归测试变更。
+
+## v0.1.1（未发布）
+
+此标签的发布因 Compose 宿主机端口验收失败被 CD 阻止，没有发布 Release；不移动旧标签，以 v0.1.2 修复。
 
 - 新增题目指定的 `POST /fingerprint`、`GET /health`，保留旧路径别名。
 - 未识别结果统一为 `protocol: "unknown"`；空/缺失 Banner 返回 unknown，合法未知数据不导致请求失败。
 - Client 和容器健康检查切换为指定接口。
-- Compose 使用专用 internal 网络，仅向宿主机回环地址暴露服务端口。
+- Compose 引入专用 internal 网络；入口端口兼容性由 v0.1.2 完成修复。
 - 增加真实 HTTP 契约、别名一致性、unknown、错误后健康检查与网络隔离断言。
 - 收录全部 20 条题目样本及独立预期；新增 Redis PONG/错误、Pure-FTPd、MySQL 截断握手支持，并同时验证文本和 Base64 传输。
 - Apache 产品名统一为题目使用的 `Apache`（原为 `Apache httpd`）。
